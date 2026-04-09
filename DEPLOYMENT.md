@@ -1,190 +1,225 @@
-# Deployment Guide — Render + Neon + Upstash (Free Tier)
+# Deployment Guide — Long Health
 
-## Overview
+## Current Live Deployment
 
-| Service | Provider | Tier | Purpose |
-|---------|----------|------|---------|
-| Backend API | Render | Free | Express + TypeScript API |
-| Web Frontend | Render | Free | Next.js app |
-| PostgreSQL | Neon | Free (0.5GB) | Primary database |
-| Redis | Upstash | Free (10K cmd/day) | Cache + job queue |
-| File Storage | AWS S3 | Pay-as-you-go | PDF storage (optional for staging) |
+| Service | Provider | URL |
+|---------|----------|-----|
+| **Backend API** | AWS App Runner (us-east-2) | https://99gjfqgwtg.us-east-2.awsapprunner.com |
+| **Frontend** | AWS App Runner (us-east-2) | https://mmbikziqz9.us-east-2.awsapprunner.com |
+| **PostgreSQL** | Neon (us-east-1) | `ep-flat-violet-amtubivq.c-5.us-east-1.aws.neon.tech` |
+| **Redis** | Upstash | `resolved-porpoise-81645.upstash.io` |
 
-**Total cost: $0/month** on free tiers.
+**Estimated cost: ~$2-7/month** (App Runner auto-pauses when idle)
 
-> **Note:** Render free services spin down after 15 minutes of inactivity. First request after idle takes ~30-50 seconds. This is fine for staging/prototyping.
+### Quick Verification
+
+```bash
+# Backend health check
+curl https://99gjfqgwtg.us-east-2.awsapprunner.com/health
+
+# Frontend
+open https://mmbikziqz9.us-east-2.awsapprunner.com
+```
 
 ---
 
-## Step 1: Create Neon PostgreSQL Database
+## Architecture
 
-1. Go to [console.neon.tech](https://console.neon.tech) and sign up
-2. Create a new project:
-   - **Name:** `longhealth`
-   - **Region:** `Asia Pacific (Singapore)` (closest to India)
-   - **Postgres version:** 16
-3. Create a database named `longhealth`
-4. Copy the **connection string** from the dashboard. It looks like:
-   ```
-   postgresql://user:pass@ep-cool-name-123456.ap-southeast-1.aws.neon.tech/longhealth?sslmode=require
-   ```
-5. Save this — you'll need it as `DATABASE_URL`
+```
+Internet
+   │
+   ├── https://mmbikziqz9.us-east-2.awsapprunner.com
+   │       App Runner: longhealth-web (Next.js)
+   │       NEXT_PUBLIC_API_URL → backend
+   │
+   └── https://99gjfqgwtg.us-east-2.awsapprunner.com
+           App Runner: longhealth-api (Express)
+            │           │
+       Neon PostgreSQL   Upstash Redis (TLS)
+       (us-east-1)      (rediss://)
+```
 
-## Step 2: Create Upstash Redis
+### AWS Resources
 
-1. Go to [console.upstash.com](https://console.upstash.com) and sign up
-2. Create a new Redis database:
-   - **Name:** `longhealth`
-   - **Region:** `AP-South-1 (Mumbai)` if available, else Singapore
-   - **TLS:** Enabled (default)
-3. Copy the **Redis URL** from the dashboard. It looks like:
-   ```
-   rediss://default:AbCdEf123@apn1-example.upstash.io:6379
-   ```
-   > Note the `rediss://` (double s) — this enables TLS, which is required.
-4. Save this — you'll need it as `REDIS_URL`
+| Resource | ID / ARN |
+|----------|----------|
+| Backend App Runner | `arn:aws:apprunner:us-east-2:309524473584:service/longhealth-api/8c95d2507c7d424d953a7b800860ca73` |
+| Web App Runner | `arn:aws:apprunner:us-east-2:309524473584:service/longhealth-web/598800184c404f978aa3037e3d7ed9c0` |
+| Backend ECR | `309524473584.dkr.ecr.us-east-2.amazonaws.com/longhealth-api` |
+| Web ECR | `309524473584.dkr.ecr.us-east-2.amazonaws.com/longhealth-web` |
+| IAM Role (ECR access) | `mongodb-mcp-apprunner-ecr-role` |
+| AWS Account | `309524473584` |
+| Region | `us-east-2` (Ohio) |
 
-## Step 3: Get Anthropic API Key
+---
 
-1. Go to [console.anthropic.com](https://console.anthropic.com)
-2. Navigate to API Keys → Create key
-3. Copy the key (starts with `sk-ant-`)
-4. Save this — you'll need it as `ANTHROPIC_API_KEY`
+## Redeployment Guide
 
-## Step 4: Deploy to Render
+### Prerequisites
 
-### Option A: Blueprint (Recommended)
+- AWS CLI configured (`aws sts get-caller-identity` works)
+- Docker Desktop running
+- On Apple Silicon Mac, always build with `--platform linux/amd64`
 
-1. Go to [dashboard.render.com](https://dashboard.render.com)
-2. Click **New** → **Blueprint**
-3. Connect your GitHub repo (`DeveloperBilions/AgeFactor`)
-4. Render auto-detects `render.yaml` and shows 2 services:
-   - `longhealth-api` (backend)
-   - `longhealth-web` (frontend)
-5. Click **Apply**
-6. Set the environment variables that show as `sync: false`:
+### Deploy Backend Changes
 
-**For longhealth-api:**
-| Variable | Value |
-|----------|-------|
-| `DATABASE_URL` | Your Neon connection string |
-| `REDIS_URL` | Your Upstash Redis URL |
-| `ANTHROPIC_API_KEY` | Your Claude API key |
-| `CORS_ORIGIN` | `https://longhealth-web.onrender.com` |
-| `AWS_ACCESS_KEY_ID` | Leave empty for staging |
-| `AWS_SECRET_ACCESS_KEY` | Leave empty for staging |
-| `S3_BUCKET` | Leave empty for staging |
-
-**For longhealth-web:**
-| Variable | Value |
-|----------|-------|
-| `NEXT_PUBLIC_API_URL` | `https://longhealth-api.onrender.com/api/v1` |
-
-7. Click **Deploy** — Render will build and deploy both services
-
-### Option B: Manual Setup
-
-If Blueprint doesn't work, create each service manually:
-
-**Backend:**
-1. New → Web Service → Connect repo
-2. **Root Directory:** `app`
-3. **Build Command:** `cd packages/backend && chmod +x render-build.sh && ./render-build.sh`
-4. **Start Command:** `cd packages/backend && npm start`
-5. **Plan:** Free
-6. **Region:** Singapore
-7. Add all env vars listed above
-
-**Frontend:**
-1. New → Web Service → Connect repo
-2. **Root Directory:** `app`
-3. **Build Command:** `cd packages/web && chmod +x render-build.sh && ./render-build.sh`
-4. **Start Command:** `cd packages/web && npm start`
-5. **Plan:** Free
-6. **Region:** Singapore
-7. Add `NEXT_PUBLIC_API_URL` env var
-
-## Step 5: Verify Deployment
-
-### Backend Health Check
 ```bash
-curl https://longhealth-api.onrender.com/health
-```
-Expected response:
-```json
-{"status":"ok","timestamp":"...","uptime":...,"environment":"production"}
+cd app
+
+# 1. Login to ECR
+aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 309524473584.dkr.ecr.us-east-2.amazonaws.com
+
+# 2. Build amd64 image
+docker build --platform linux/amd64 -t 309524473584.dkr.ecr.us-east-2.amazonaws.com/longhealth-api:latest -f packages/backend/Dockerfile .
+
+# 3. Push to ECR
+docker push 309524473584.dkr.ecr.us-east-2.amazonaws.com/longhealth-api:latest
+
+# 4. Trigger redeployment
+aws apprunner start-deployment \
+  --service-arn "arn:aws:apprunner:us-east-2:309524473584:service/longhealth-api/8c95d2507c7d424d953a7b800860ca73" \
+  --region us-east-2
+
+# 5. Check status (wait for RUNNING)
+aws apprunner describe-service \
+  --service-arn "arn:aws:apprunner:us-east-2:309524473584:service/longhealth-api/8c95d2507c7d424d953a7b800860ca73" \
+  --region us-east-2 --query 'Service.Status' --output text
 ```
 
-### Frontend
-Open `https://longhealth-web.onrender.com` in your browser. You should see the Long Health landing page.
+### Deploy Frontend Changes
 
-### Test Auth Flow
 ```bash
-# Send OTP (in production mode without MSG91, check Render logs for the OTP)
-curl -X POST https://longhealth-api.onrender.com/api/v1/auth/send-otp \
-  -H "Content-Type: application/json" \
-  -d '{"phone": "+919999999999"}'
+cd app
+
+# 1. Build amd64 image (API URL is baked in at build time)
+docker build --platform linux/amd64 \
+  -t 309524473584.dkr.ecr.us-east-2.amazonaws.com/longhealth-web:latest \
+  --build-arg NEXT_PUBLIC_API_URL=https://99gjfqgwtg.us-east-2.awsapprunner.com/api/v1 \
+  -f packages/web/Dockerfile .
+
+# 2. Push to ECR
+docker push 309524473584.dkr.ecr.us-east-2.amazonaws.com/longhealth-web:latest
+
+# 3. Trigger redeployment
+aws apprunner start-deployment \
+  --service-arn "arn:aws:apprunner:us-east-2:309524473584:service/longhealth-web/598800184c404f978aa3037e3d7ed9c0" \
+  --region us-east-2
 ```
+
+### Run Database Migrations
+
+Migrations run from your local machine against Neon:
+
+```bash
+cd app/packages/backend
+
+DATABASE_URL="postgresql://neondb_owner:npg_0pyXMzKo5RCN@ep-flat-violet-amtubivq.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require" npm run migrate:up
+
+DATABASE_URL="postgresql://neondb_owner:npg_0pyXMzKo5RCN@ep-flat-violet-amtubivq.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require" npm run seed
+```
+
+---
+
+## Environment Variables
+
+### Backend (App Runner)
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `NODE_ENV` | `production` | |
+| `PORT` | `3001` | |
+| `DATABASE_URL` | `postgresql://neondb_owner:...@ep-flat-violet-amtubivq.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require` | Neon |
+| `REDIS_URL` | `rediss://default:...@resolved-porpoise-81645.upstash.io:6379` | Upstash (TLS) |
+| `JWT_SECRET` | (generated) | Min 32 chars |
+| `JWT_EXPIRY` | `7d` | |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` | Claude API |
+| `AWS_REGION` | `us-east-2` | |
+| `CORS_ORIGIN` | `https://mmbikziqz9.us-east-2.awsapprunner.com` | Frontend URL |
+| `LOG_LEVEL` | `info` | |
+
+### Frontend (App Runner)
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `PORT` | `3000` | |
+| `HOSTNAME` | `0.0.0.0` | Required for App Runner |
+
+### Frontend (Build-time)
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `NEXT_PUBLIC_API_URL` | `https://99gjfqgwtg.us-east-2.awsapprunner.com/api/v1` | Passed as `--build-arg` |
+
+---
+
+## App Runner Service Config
+
+Both services use:
+- **CPU:** 0.25 vCPU (256 units)
+- **Memory:** 0.5 GB (512 units)
+- **Health check:** TCP, 20s interval, 10s timeout, 10 unhealthy threshold
+- **Auto-deploy:** Disabled (manual via `start-deployment`)
+- **ECR access role:** `mongodb-mcp-apprunner-ecr-role`
 
 ---
 
 ## Troubleshooting
 
-### Build Fails on Render
+### Container Fails to Deploy
 
-**Check Render build logs** — common issues:
+1. **Check architecture:** Must be `linux/amd64`. On Apple Silicon, always use `--platform linux/amd64`
+   ```bash
+   docker inspect <image> --format '{{.Architecture}}'
+   ```
 
-1. **"Cannot find module '@long-health/shared'"**
-   - The build script must install from monorepo root. Ensure `render-build.sh` does `cd ../..` before `npm install`.
+2. **Check logs:**
+   ```bash
+   # Event logs
+   aws logs get-log-events \
+     --log-group-name "/aws/apprunner/longhealth-api/<service-id>/service" \
+     --log-stream-name "events" \
+     --region us-east-2 --query 'events[].message' --output json
+   ```
 
-2. **"DATABASE_URL must be a valid URL"**
-   - Ensure `DATABASE_URL` env var is set in Render dashboard before deploying.
+### Database Connection Issues
 
-3. **Migration fails**
-   - Check your Neon database is active (free tier auto-suspends after 5min idle)
-   - Verify the connection string includes `?sslmode=require`
+- Neon free tier auto-suspends after 5min idle — first connection takes 3-5s to wake
+- Connection timeout is set to 10s to accommodate this
+- SSL is required: `ssl: { rejectUnauthorized: false }` is configured in `database.ts`
 
-### App Starts But API Returns 500
+### CORS Errors
 
-- Check Render logs: Dashboard → Service → Logs
-- Common cause: Redis connection failed — verify Upstash URL uses `rediss://` (double s)
+Update `CORS_ORIGIN` env var on backend to match the exact frontend URL (include `https://`, no trailing slash). This requires an `update-service` call to App Runner.
 
-### Cold Start Takes Too Long
+### Redis Connection Issues
 
-Free tier limitation. First request after 15min idle takes 30-50 seconds. Options:
-- Use a free cron service (like cron-job.org) to ping `/health` every 14 minutes
-- Upgrade to Render Starter plan ($7/month) for always-on
-
-### CORS Errors in Browser
-
-- Ensure `CORS_ORIGIN` on the backend matches the exact frontend URL
-- Include the protocol: `https://longhealth-web.onrender.com` (no trailing slash)
+- Upstash requires TLS — URL must start with `rediss://` (double s)
+- BullMQ settings `maxRetriesPerRequest: null` and `enableReadyCheck: false` are already configured
 
 ---
 
-## Adding S3 Later (For PDF Upload)
+## Adding S3 for PDF Upload
 
-When ready to enable PDF upload:
+When ready to enable file uploads:
 
-1. Create an S3 bucket in AWS (`ap-south-1` region)
-2. Create an IAM user with S3 access to that bucket only
-3. Set these env vars in Render:
+1. Create S3 bucket in `us-east-2`
+2. Create IAM user with S3 access to that bucket
+3. Update backend App Runner env vars:
    - `AWS_ACCESS_KEY_ID`
    - `AWS_SECRET_ACCESS_KEY`
    - `S3_BUCKET`
-4. Redeploy the backend
+4. Redeploy backend
 
 ---
 
-## Upgrading from Free Tier
+## Scaling Up
 
-When the app outgrows free tier:
+When the app outgrows the current setup:
 
-| Upgrade | When | Cost |
-|---------|------|------|
-| Render Starter | Need always-on (no cold starts) | $7/month per service |
-| Neon Launch | Need >0.5GB storage | $19/month |
+| Change | When | Cost Impact |
+|--------|------|-------------|
+| App Runner 1 vCPU / 2GB | Need more performance | ~$15-25/month |
+| Neon Pro | Need >0.5GB storage | $19/month |
 | Upstash Pro | Need >10K commands/day | $10/month |
-| **AWS Lightsail** | Need full control, single instance | $10/month total |
-
-See the Lightsail deployment plan for the next step up.
+| Custom domain + CloudFront | Need branded URL | ~$1/month |
+| Move to ECS Fargate + RDS | 500+ active users | ~$70+/month |
