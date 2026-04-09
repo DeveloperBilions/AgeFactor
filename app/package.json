@@ -1,0 +1,28 @@
+{
+  "name": "long-health",
+  "version": "1.0.0",
+  "description": "AI-powered blood report analysis platform for India",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces",
+    "start": "npm run start --workspaces",
+    "test": "npm run test --workspaces",
+    "test:watch": "npm run test:watch --workspaces"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "keywords": [
+    "health",
+    "blood-report",
+    "AI",
+    "analysis",
+    "India"
+  ]
+}

@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* Long Health brand colors */
+  --color-beige: #FEF9EF;
+  --color-cream: #F5EEE1;
+  --color-surface: #F4EFE6;
+  --color-terracotta: #C07858;
+  --color-terracotta-dark: #A5603F;
+  --color-orange: #B05A36;
+  --color-midnight: #2A2B2F;
+  --color-text-primary: #3C3D42;
+  --color-text-secondary: #6B6C73;
+  --color-text-muted: #9A9BA1;
+
+  /* Status colors */
+  --color-optimal: #79BD8B;
+  --color-optimal-bg: #F0F9F2;
+  --color-borderline: #E8A838;
+  --color-borderline-bg: #FEF6E7;
+  --color-critical: #D95550;
+  --color-critical-bg: #FDF0EF;
+
+  --color-green: #79BD8B;
+  --color-amber: #E8A838;
+  --color-red: #D95550;
+  --color-blue: #488AD5;
+
+  /* Borders */
+  --color-border: #E5DFD4;
+  --color-border-light: #EDE8DD;
+
+  /* Typography */
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  /* Spacing overrides for 8pt grid */
+  --spacing-18: 4.5rem;
+  --spacing-88: 22rem;
+}
+
+/* Google Fonts import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
+
+/* Base styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  background-color: var(--color-beige);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Serif headings */
+.font-display {
+  font-family: var(--font-serif);
+  letter-spacing: -0.02em;
+}
+
+/* Status pill styles */
+.status-optimal {
+  color: #3D7A4C;
+  background: var(--color-optimal-bg);
+  border: 1px solid #C1E4C8;
+}
+
+.status-borderline {
+  color: #8A6A1E;
+  background: var(--color-borderline-bg);
+  border: 1px solid #F0D89A;
+}
+
+.status-low,
+.status-high {
+  color: #A33B38;
+  background: var(--color-critical-bg);
+  border: 1px solid #F0B8B5;
+}
+
+.status-critical {
+  color: #7D1A17;
+  background: #FBE8E7;
+  border: 1px solid #E89A97;
+}
+
+/* Smooth animations */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeUp {
+  animation: fadeUp 0.4s ease-out forwards;
+}
+
+/* Staggered children animations */
+.animate-stagger > * {
+  opacity: 0;
+  animation: fadeUp 0.4s ease-out forwards;
+}
+
+.animate-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.animate-stagger > *:nth-child(2) { animation-delay: 60ms; }
+.animate-stagger > *:nth-child(3) { animation-delay: 120ms; }
+.animate-stagger > *:nth-child(4) { animation-delay: 180ms; }
+.animate-stagger > *:nth-child(5) { animation-delay: 240ms; }
+.animate-stagger > *:nth-child(6) { animation-delay: 300ms; }
+.animate-stagger > *:nth-child(7) { animation-delay: 360ms; }
+.animate-stagger > *:nth-child(8) { animation-delay: 420ms; }
+
+/* Score ring animation */
+@keyframes scoreRing {
+  from { stroke-dashoffset: 283; }
+}
+
+.score-ring {
+  animation: scoreRing 1.2s ease-out forwards;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Input focus ring */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-terracotta);
+  outline-offset: 1px;
+}
+
+/* OTP input styling */
+.otp-input {
+  caret-color: var(--color-terracotta);
+}
+
+.otp-input::selection {
+  background: #C0785833;
+}
