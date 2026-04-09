@@ -36,12 +36,12 @@ export default function AuthPage() {
 
   const handleSendOtp = async () => {
     const cleanPhone = phone.replace(/\s/g, '');
-    if (!/^\+91\d{10}$/.test(cleanPhone) && !/^\d{10}$/.test(cleanPhone)) {
-      setError('Enter a valid 10-digit Indian mobile number');
+    if (!/^\+\d{7,15}$/.test(cleanPhone) && !/^\d{10}$/.test(cleanPhone)) {
+      setError('Enter a valid phone number with country code (e.g. +91...)');
       return;
     }
 
-    const fullPhone = cleanPhone.startsWith('+91') ? cleanPhone : `+91${cleanPhone}`;
+    const fullPhone = cleanPhone.startsWith('+') ? cleanPhone : `+91${cleanPhone}`;
     setError('');
     setLoading(true);
 

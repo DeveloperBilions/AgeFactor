@@ -1,12 +1,14 @@
 import { z } from 'zod';
 
-const indianPhoneRegex = /^\+91\d{10}$/;
+// Accept any phone number with country code (e.g. +91xxxxxxxxxx, +1xxxxxxxxxx)
+// TODO: Restrict to Indian numbers (+91) once SMS provider is integrated
+const phoneRegex = /^\+\d{7,15}$/;
 
 export const sendOtpSchema = z.object({
   body: z.object({
     phone: z
       .string()
-      .regex(indianPhoneRegex, 'Phone must be a valid Indian number starting with +91 followed by 10 digits'),
+      .regex(phoneRegex, 'Phone must start with + followed by 7-15 digits'),
   }),
 });
 
@@ -14,7 +16,7 @@ export const verifyOtpSchema = z.object({
   body: z.object({
     phone: z
       .string()
-      .regex(indianPhoneRegex, 'Phone must be a valid Indian number starting with +91 followed by 10 digits'),
+      .regex(phoneRegex, 'Phone must start with + followed by 7-15 digits'),
     otp: z
       .string()
       .regex(/^\d{6}$/, 'OTP must be exactly 6 digits'),

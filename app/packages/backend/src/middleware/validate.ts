@@ -6,17 +6,15 @@ type ValidationTarget = 'body' | 'query' | 'params';
 export function validate(schema: ZodSchema, target: ValidationTarget = 'body') {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
-      const data = target === 'body' ? req.body : target === 'query' ? req.query : req.params;
+      const validated = schema.parse({
+        body: req.body,
+        query: req.query,
+        params: req.params,
+      });
 
-      const validated = schema.parse(data);
-
-      if (target === 'body') {
-        req.body = validated;
-      } else if (target === 'query') {
-        req.query = validated;
-      } else {
-        req.params = validated;
-      }
+      if (validated.body) req.body = validated.body;
+      if (validated.query) req.query = validated.query;
+      if (validated.params) req.params = validated.params;
 
       next();
     } catch (error) {

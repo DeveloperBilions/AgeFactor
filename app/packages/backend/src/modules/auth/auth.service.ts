@@ -71,12 +71,9 @@ export async function sendOtp(phone: string): Promise<{ success: boolean; messag
     [phone, otpHash, expiresAt, 0, false]
   );
 
-  // Send OTP (dev logs, production would call SMS provider)
-  if (env.NODE_ENV === 'development') {
-    console.log(`[DEV] OTP for ${phone}: ${otp}`);
-  } else {
-    await sendSms(phone, otp);
-  }
+  // TODO: Integrate SMS provider (MSG91/Twilio) for production
+  // For now, log OTP and accept any phone number
+  console.log(`[OTP] ${phone}: ${otp}`);
 
   return {
     success: true,
