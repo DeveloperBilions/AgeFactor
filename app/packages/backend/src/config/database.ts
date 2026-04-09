@@ -5,7 +5,10 @@ const pool = new Pool({
   connectionString: env.DATABASE_URL,
   max: env.NODE_ENV === 'production' ? 5 : 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000,
+  ssl: env.DATABASE_URL.includes('sslmode=require')
+    ? { rejectUnauthorized: false }
+    : undefined,
 });
 
 pool.on('error', (err) => {

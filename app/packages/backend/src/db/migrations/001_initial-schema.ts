@@ -196,7 +196,7 @@ export const up = (pgm: MigrationBuilder) => {
     },
     status: {
       type: 'report_status',
-      default: "'uploading'",
+      default: pgm.func("'uploading'::report_status"),
     },
     error_message: {
       type: 'text',
