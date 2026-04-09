@@ -21,6 +21,17 @@ curl https://99gjfqgwtg.us-east-2.awsapprunner.com/health
 open https://mmbikziqz9.us-east-2.awsapprunner.com
 ```
 
+### Get OTP from Logs
+
+SMS is not yet integrated. OTPs are logged to CloudWatch. To retrieve the latest OTP:
+
+```bash
+aws logs filter-log-events \
+  --log-group-name "/aws/apprunner/longhealth-api/8c95d2507c7d424d953a7b800860ca73/application" \
+  --region us-east-2 --filter-pattern "OTP" \
+  --query 'events[-1].message' --output text
+```
+
 ---
 
 ## Architecture
