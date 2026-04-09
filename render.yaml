@@ -1,0 +1,51 @@
+services:
+  # Backend API (Express + TypeScript)
+  - type: web
+    name: longhealth-api
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: app
+    buildCommand: cd packages/backend && chmod +x render-build.sh && ./render-build.sh
+    startCommand: cd packages/backend && npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRY
+        value: 7d
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: AWS_REGION
+        value: ap-south-1
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+
+  # Frontend (Next.js)
+  - type: web
+    name: longhealth-web
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: app
+    buildCommand: cd packages/web && chmod +x render-build.sh && ./render-build.sh
+    startCommand: cd packages/web && npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
